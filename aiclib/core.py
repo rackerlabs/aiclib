@@ -1,6 +1,4 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2013 Rackspace
+# Copyright 2015 Rackspace Hosting Inc.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -20,11 +18,12 @@ Created on August 17, 2012
 @author: Justin Hammond, Rackspace Hosting
 """
 
+import errno
 import json
 import logging
-import errno
-import time
 import socket
+import time
+
 try:
     from urllib.parse import urlencode
 except ImportError:
@@ -53,11 +52,15 @@ class CoreLib(object):
         username -- the username to log into the nvp controller
         password -- the password to log into the nvp controller
         """
+        retries = kwargs.get("retries", 3)
+        redirect = kwargs.get("redirect", True)
         if poolmanager is None:
-            self.conn = urllib3.connection_from_url(uri)
+            self.conn = urllib3.connection_from_url(uri, retries=retries,
+                                                    redirect=redirect)
 
         else:
-            self.conn = poolmanager.connection_from_url(uri)
+            self.conn = poolmanager.connection_from_url(uri, retries=retries,
+                                                        redirect=redirect)
 
         self.connection = Connection(connection=self.conn,
                                      username=username,
