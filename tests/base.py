@@ -1,6 +1,4 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2013 Rackspace
+# Copyright 2015 Rackspace
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -13,3 +11,22 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+import os
+
+import aiclib
+import tests
+
+
+class IntegrationTestBase(tests.TestCase):
+
+    def setUp(self):
+        default = "localhost"
+        default_user = "admin"
+        default_password = "password"
+
+        url = os.getenv('AICLIB_NVP_URL', default)
+        username = os.getenv('AICLIB_NVP_USERNAME', default_user)
+        password = os.getenv('AICLIB_NVP_PASSWORD', default_password)
+        self.nvp = aiclib.nvp.Connection(url, username=username,
+                                         password=password)

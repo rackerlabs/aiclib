@@ -20,14 +20,13 @@ Created: August 30, 2012
 @author: Justin Hammond, Rackspace Hosting
 """
 
-import tests
-import aiclib
+import tests.base
 
 
-class TestTransportNode(tests.TestCase):
+class TestTransportNode(tests.base.IntegrationTestBase):
 
     def setUp(self):
-        self.nvp = aiclib.nvp.Connection("https://nvp")
+        super(TestTransportNode, self).setUp()
         self.tnode = self.nvp.transportnode().create()
 
     def tearDown(self):

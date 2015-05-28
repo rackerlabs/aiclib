@@ -20,14 +20,13 @@ Created: August 30, 2012
 @author: Justin Hammond, Rackspace Hosting
 """
 
-import tests
-import aiclib
+import tests.base
 
 
-class TestSecurityProfile(tests.TestCase):
+class TestSecurityProfile(tests.base.IntegrationTestBase):
 
     def setUp(self):
-        self.nvp = aiclib.nvp.Connection("https://nvp")
+        super(TestSecurityProfile, self).setUp()
         self.secprofile = self.nvp.securityprofile().create()
 
     def tearDown(self):

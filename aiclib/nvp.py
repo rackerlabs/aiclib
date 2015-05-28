@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Rackspace
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -93,7 +91,7 @@ class Connection(core.CoreLib):
         entity = nvpentity.GatewayService(self, uuid=uuidvalue)
         return entity
 
-    def transportzone(self, uuid=None):
+    def zone(self, uuid=None):
         uuidvalue = grab_uuid_of_type(uuid, None)
         entity = nvpentity.TransportZone(self, uuid=uuidvalue)
         return entity
@@ -165,7 +163,6 @@ class Connection(core.CoreLib):
         if responselength > 0:
             if r.getheader('content-type') == 'application/json':
                 jsonreturn = json.loads(r.data)
-
                 if generationid:
                     jsonreturn['_generationid'] = generationid
                 if r.status:

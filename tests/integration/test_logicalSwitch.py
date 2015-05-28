@@ -20,14 +20,13 @@ Created: August 27, 2012
 @author: Justin Hammond, Rackspace Hosting
 """
 
-import tests
-import aiclib
+import tests.base
 
 
-class TestLogicalSwitch(tests.TestCase):
+class TestLogicalSwitch(tests.base.IntegrationTestBase):
 
     def setUp(self):
-        self.nvp = aiclib.Connection("https://nvp")
+        super(TestLogicalSwitch, self).setUp()
         self.switch = self.nvp.lswitch().create()
 
     def tearDown(self):
