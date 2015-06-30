@@ -20,14 +20,13 @@ Created: August 30, 2012
 @author: Justin Hammond, Rackspace Hosting
 """
 
-import tests
-import aiclib
+import tests.base
 
 
-class TestQOS(tests.TestCase):
+class TestQOS(tests.base.IntegrationTestBase):
 
     def setUp(self):
-        self.nvp = aiclib.nvp.Connection("https://nvp")
+        super(TestQOS, self).setUp()
         self.qos = self.nvp.qos().create()
 
     def tearDown(self):

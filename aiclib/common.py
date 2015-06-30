@@ -22,8 +22,7 @@ Created on August 21, 2012
 
 import calendar
 import logging
-import re
-
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +49,9 @@ def dttounix(date_time):
     return unixtime
 
 
-def isuuid(uuid):
-    regex = "%s-%s-%s-%s-%s" % ("[a-f0-9]{8}", "[a-f0-9]{4}",
-                                "[a-f0-9]{4}", "[a-f0-9]{4}",
-                                "[a-f0-9]{12}")
-    return re.match(regex, uuid)
+def isuuid(the_uuid):
+    try:
+        uuid.UUID(the_uuid, version=4)
+    except (ValueError, AttributeError):
+        return False
+    return True

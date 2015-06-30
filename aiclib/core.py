@@ -30,6 +30,7 @@ except ImportError:
     from urllib import urlencode
 
 import urllib3
+import urlparse
 
 import common
 import nvp
@@ -117,7 +118,7 @@ class Connection(object):
     _encode_body_methods = set(['PATCH', 'POST', 'PUT', 'TRACE'])
 
     def __init__(self, username, password, connection=None, timeout=10,
-                 retries=3, backoff=2):
+                 retries=0, backoff=2):
         self._conn = connection
         self.authenticated = False
         self.username = username
@@ -137,17 +138,18 @@ class Connection(object):
                 raise IOError('401', 'Unauthorized')
         return self._conn
 
-    def _login(self, username, password):
+    def _login(self, username, password, uri=None):
         fields = {'username': username, 'password': password}
-        r = self._conn.request_encode_body('POST', common.genuri('login'),
+        if not uri:
+            uri = common.genuri('login')
+        r = self._conn.request_encode_body('POST', uri,
                                            fields=fields, timeout=self.timeout,
-                                           encode_multipart=False)
+                                           encode_multipart=False,
+                                           headers=None, retries=0)
         if self._iserror(r):
-            logger.error("Need to handle error")
             return False
         else:
             self.authkey = r.headers['set-cookie']
-            logger.info("Authorized (%s)" % (self.authkey))
         self.authenticated = True
         return True
 
@@ -160,75 +162,99 @@ class Connection(object):
         }
         return self._headers
 
-    def request(self, method, url, generationnumber=0, body=None,
-                retries=None, backoff=None, is_url_prepared=False,
-                is_body_prepared=False):
-        if not self.authenticated:
-            self._login(self.username, self.password)
-
-        if retries is None:
-            retries = self.retries
-
-        if backoff is None:
-            backoff = self.backoff
-
-        if retries < 0:
-            raise AICException(408, 'Max retries reached')
-
-        self.generationnumber = generationnumber
-        open_args = [method]
-        open_kwargs = {'retries': 1, 'timeout': self.timeout,
-                       'headers': self.headers}
-
+    def _prep_body_and_url(self, method, url, body, is_url_prepared,
+                           is_body_prepared):
+        new_body = None
+        new_url = url
         if body:
             if method in self._encode_url_methods and not is_url_prepared:
                 params = urlencode(body, doseq=True)
-                logger.info("Encoded URL: %s" % params)
-                url = url + '?' + params
-
+                new_url = "%s?%s" % (url, params)
             else:
                 if not is_body_prepared:
                     body = json.dumps(body)
-                open_kwargs['body'] = body
+                new_body = body
+        else:
+            if method in ("PUT", "POST"):
+                new_body = '{}'
+        return new_body, new_url
 
-        open_args.append(url)
+    def request(self, method, url, generationnumber=0, body=None,
+                retries=0, is_url_prepared=False, is_body_prepared=False,
+                max_redirects=5):
+        if not self.authenticated:
+            self._login(self.username, self.password)
 
-        try:
-            r = self.connection.urlopen(*open_args, **open_kwargs)
-
-            if self._iserror(r):
-                try:
-                    self._handle_error(r)
-                except:
-                    logger.error("Unhandled error: reraising.")
-                    raise
-            else:
+        open_args = {'method': method}
+        open_kwargs = {'retries': False, 'timeout': self.timeout,
+                       'headers': self.headers, 'assert_same_host': False}
+        # we'll handle retries here, not in urllib3
+        open_kwargs['body'], url = self._prep_body_and_url(method, url, body,
+                                                           is_url_prepared,
+                                                           is_body_prepared)
+        if 'url' not in open_args:
+            open_args.update({'url': url})
+        if retries == 0:
+            # can't prematurely skip the redirect if retries is 0
+            retries = 1
+        while retries > 0:
+            try:
+                r = self.connection.urlopen(open_args['method'],
+                                            open_args['url'], redirect=False,
+                                            **open_kwargs)
+                if self._iserror(r):
+                    try:
+                        self._handle_error(r)
+                    except:
+                        logger.error("Unhandled error: reraising.")
+                        raise
+            except (urllib3.exceptions.TimeoutError, nvp.RequestTimeout):
+                logger.exception("Timeout while talking to NVP. "
+                                 "Will retry %s times" % retries - 1)
+            retries -= 1
+            while self._is_redirect(r) and max_redirects > 0:
+                self._headers = None
+                new_host = urlparse.urlparse(
+                    r.headers['location']).netloc.split(':')[0]
+                # need to recreate the pool to connect to the new host
+                self._conn = urllib3.connectionpool.HTTPSConnectionPool(
+                    host=new_host, port=443,
+                    timeout=urllib3.util.timeout.Timeout(connect=2.0,
+                                                         read=5.0),
+                    headers=self._headers, retries=False)
+                self._login(self.username, self.password)
+                open_kwargs['headers']['Cookie'] = self.authkey
+                # handling redirecting here, not in urlopen
+                r = self.connection.urlopen(open_args['method'],
+                                            open_args['url'], redirect=False,
+                                            **open_kwargs)
+                max_redirects -= 1
+                if self._iserror(r):
+                    try:
+                        self._handle_error(r)
+                    except:
+                        logger.error("Unhandled error: reraising.")
+                        raise
+            if not self._iserror(r):
                 return r
-
-        except (urllib3.exceptions.TimeoutError, nvp.RequestTimeout):
-            logger.exception(' '.join(('Timeout talking to NVP.',
-                                       'Will retry %s more times.')),
-                             retries - 1)
-
-        retries = retries - 1
-
-        # NOTE(jkoelker) Lets be nice(er) to NVP with an exponential
-        #                backoff.
-        time.sleep(backoff)
-        backoff = backoff ** 2
-
-        return self.request(method, url, generationnumber=generationnumber,
-                            body=body, retries=retries, backoff=backoff,
-                            is_url_prepared=True, is_body_prepared=True)
+            # be gentle with NVP using exponential backoff
+            time.sleep(self.backoff)
+            self.backoff = self.backoff ** 2
 
     def _handle_headers(self, resp):
         return
 
     def _iserror(self, resp):
-        errorcheck = resp.status - 200
-        if errorcheck >= 100:
+        if (resp.status >= 300 and not self._is_redirect(resp)):
+            logger.info("Request error %s (%s)" % (resp.status, resp.reason))
             return True
         logger.info("Request success %s (%s)" % (resp.status, resp.reason))
+        return False
+
+    def _is_redirect(self, resp):
+        if resp.status in resp.REDIRECT_STATUSES:
+            logger.debug("Redirect detected: %s" % resp.status)
+            return True
         return False
 
     def _handle_error(self, resp):

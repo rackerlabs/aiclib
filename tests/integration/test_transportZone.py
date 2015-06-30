@@ -20,14 +20,13 @@ Created: August 29, 2012
 @author: Justin Hammond, Rackspace Hosting
 """
 
-import tests
-import aiclib
+import tests.base
 
 
-class TestTransportZone(tests.TestCase):
+class TestTransportZone(tests.base.IntegrationTestBase):
 
     def setUp(self):
-        self.nvp = aiclib.Connection("https://nvp")
+        super(TestTransportZone, self).setUp()
         self.zone = self.nvp.zone().create()
 
     def tearDown(self):
