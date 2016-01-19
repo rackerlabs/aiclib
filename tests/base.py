@@ -30,3 +30,8 @@ class IntegrationTestBase(tests.TestCase):
         password = os.getenv('AICLIB_NVP_PASSWORD', default_password)
         self.nvp = aiclib.nvp.Connection(url, username=username,
                                          password=password)
+
+
+class UnitTestBase(tests.TestCase):
+    def setUp(self):
+        super(UnitTestBase, self).setUp()
