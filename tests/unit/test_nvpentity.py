@@ -27,25 +27,27 @@ class LSwitchTestCase(test_base.UnitTestBase):
         self.assertIsNone(self.lswitch.get("transport_zones"))
 
         cases = (
-            (('zone-uuid', 'vxlan'),
-              {'vlan_id': 1337, 'vxlan_id': 31337},
-              [{
-                'zone_uuid': 'zone-uuid',
-                'binding_config': {
-                    "vlan_translation": [{'transport': 1337}],
-                    "vxlan_transport": [{'transport': 31337}]
-                },
-                'transport_type': 'vxlan'
-             }]),
-             (('zone-uuid', 'gre'),
-              {'vlan_id': 1337},
-              [{
-                'zone_uuid': 'zone-uuid',
-                'binding_config': {
-                    "vlan_translation": [{'transport': 1337}],
-                },
-                'transport_type': 'gre'
-             }]),
+            (
+                ('zone-uuid', 'vxlan'),
+                {'vlan_id': 1337, 'vxlan_id': 31337},
+                [{
+                    'zone_uuid': 'zone-uuid',
+                    'binding_config': {
+                        "vlan_translation": [{'transport': 1337}],
+                        "vxlan_transport": [{'transport': 31337}]},
+                    'transport_type': 'vxlan'
+                }]
+            ),
+            (
+                ('zone-uuid', 'gre'),
+                {'vlan_id': 1337},
+                [{
+                    'zone_uuid': 'zone-uuid',
+                    'binding_config': {
+                        "vlan_translation": [{'transport': 1337}]},
+                    'transport_type': 'gre'
+                }]
+            ),
         )
 
         for case in cases:
