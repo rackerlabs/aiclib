@@ -54,11 +54,21 @@ class CoreLib(object):
         password -- the password to log into the nvp controller
         """
         retries = kwargs.get("retries", 3)
+        socket_options = \
+            urllib3.connection.HTTPConnection.default_socket_options + \
+            [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1), ]
+
         if poolmanager is None:
-            self.conn = urllib3.connection_from_url(uri, retries=retries)
+            self.conn = urllib3.connection_from_url(
+                uri,
+                retries=retries,
+                socket_options=socket_options)
 
         else:
-            self.conn = poolmanager.connection_from_url(uri, retries=retries)
+            self.conn = poolmanager.connection_from_url(
+                uri,
+                retries=retries,
+                socket_options=socket_options)
 
         self.connection = Connection(connection=self.conn,
                                      username=username,

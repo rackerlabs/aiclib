@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import socket
 import aiclib
 import tests.base as test_base
 
@@ -204,3 +205,18 @@ class ConnectionTestCase(test_base.UnitTestBase):
 
         self.assertEqual(e.exception.code, 408)
         self.assertTrue(msg in e.exception.message)
+
+    def test_connection_tcp_options(self):
+        """Tests the TCP options set on the connection.
+        In particular we are looking for so_keepalive.
+        """
+        conn = self.connection.conn._get_conn()
+        socket_options = conn.socket_options
+
+        #
+        # TCP socket options are set in a list of tuples, such as:
+        # [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1), (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
+        #
+        self.assertTrue((socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1) in socket_options, 'Did not find SO_KEEPALIVE in tcp_options')
+
+        self.assertTrue((socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) in socket_options, 'Did not find TCP_NODELAY in tcp_options')
